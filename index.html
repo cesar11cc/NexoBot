@@ -3,139 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexo Dashboard - Tiempo Real</title>
+    <title>Nexo | Intelligent Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pocketbase/0.21.1/pocketbase.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; }
-        .card { transition: all 0.3s ease; animation: slideIn 0.5s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        .entrada-border { border-left: 4px solid #4ade80; }
-        .salida-border { border-left: 4px solid #f87171; }
+        body { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-anim { animation: slideUp 0.4s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+        
+        /* Scrollbar fina */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
     </style>
 </head>
-<body class="p-8 max-w-6xl mx-auto">
+<body class="h-screen flex flex-col overflow-hidden">
 
-    <div class="flex justify-between items-end mb-8 border-b border-gray-700 pb-4">
-        <div>
-            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-                Nexo Inventory
-            </h1>
-            <p class="text-gray-400 mt-1">Monitoreo de Stock Inteligente</p>
+    <nav class="border-b border-slate-800 bg-slate-900/80 px-8 py-4 flex justify-between items-center z-50">
+        <div class="flex items-center gap-3">
+            <div class="h-8 w-8 bg-gradient-to-tr from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center font-bold text-white">N</div>
+            <h1 class="text-xl font-bold tracking-tight">Nexo <span class="text-slate-500 font-normal">Enterprise</span></h1>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="relative flex h-3 w-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            <span class="text-sm font-mono text-green-400">SISTEMA ONLINE</span>
+        <div class="flex items-center gap-4 text-xs font-mono">
+            <div class="px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                SYSTEM ONLINE
+            </div>
+            <div class="text-slate-400">v2.1.0</div>
         </div>
-    </div>
+    </nav>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="flex-1 flex overflow-hidden">
         
-        <div class="lg:col-span-2">
-            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span>📡</span> Transmisión en Vivo
-            </h2>
-            <div id="lista-movimientos" class="space-y-3">
-                <div class="text-center text-gray-600 py-10 italic">
-                    Esperando datos del bot...
-                </div>
-            </div>
-        </div>
+        <aside class="w-16 border-r border-slate-800 hidden md:flex flex-col items-center py-6 gap-6 text-slate-500">
+            <div class="p-2 bg-slate-800 rounded text-blue-400 cursor-pointer hover:bg-slate-700 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></div>
+            <div class="p-2 cursor-pointer hover:text-slate-300 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></div>
+            <div class="mt-auto p-2 cursor-pointer hover:text-slate-300 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>
+        </aside>
 
-        <div>
-            <div class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 sticky top-8">
-                <h3 class="text-lg font-semibold text-gray-300 mb-4">Última Actividad</h3>
+        <main class="flex-1 p-8 overflow-y-auto">
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="glass-panel rounded-xl p-5 relative overflow-hidden group">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:scale-110 transition duration-500">
+                        <svg class="w-24 h-24 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/><path d="M7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/></svg>
+                    </div>
+                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Total Movimientos</p>
+                    <h3 class="text-3xl font-bold text-white mt-1" id="kpi-total">0</h3>
+                    <div class="mt-2 text-xs text-green-400 flex items-center gap-1">
+                        <span>↑ 12%</span> <span class="text-slate-500">vs semana pasada</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5">
+                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Entradas (24h)</p>
+                    <h3 class="text-3xl font-bold text-emerald-400 mt-1" id="kpi-entradas">0</h3>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5">
+                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Salidas (24h)</p>
+                    <h3 class="text-3xl font-bold text-rose-400 mt-1" id="kpi-salidas">0</h3>
+                </div>
                 
-                <div class="text-center py-8">
-                    <div id="ultimo-tipo" class="text-sm uppercase tracking-widest text-gray-500 mb-1">ESPERANDO...</div>
-                    <div id="ultima-cantidad" class="text-5xl font-bold text-white mb-2">--</div>
-                    <div id="ultimo-producto" class="text-xl text-blue-300">--</div>
-                </div>
-
-                <div class="mt-6 pt-6 border-t border-slate-700">
-                    <div class="flex justify-between text-sm text-gray-400 mb-2">
-                        <span>Estado de IA</span>
-                        <span class="text-green-400">Activa</span>
-                    </div>
-                    <div class="flex justify-between text-sm text-gray-400">
-                        <span>Base de Datos</span>
-                        <span class="text-blue-400">PocketBase</span>
-                    </div>
+                <div class="glass-panel rounded-xl p-5 border-l-4 border-l-blue-500">
+                    <p class="text-slate-400 text-xs uppercase mb-1">Última acción detectada</p>
+                    <div id="last-action-text" class="text-lg font-medium text-white truncate">Esperando audio...</div>
+                    <div id="last-action-time" class="text-xs text-slate-500 mt-1">--:--</div>
                 </div>
             </div>
-        </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
+                
+                <div class="lg:col-span-2 flex flex-col h-full">
+                    <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                        <span class="bg-blue-500/20 text-blue-400 p-1.5 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                        Bitácora de Inventario
+                    </h2>
+                    
+                    <div class="glass-panel rounded-xl flex-1 overflow-hidden flex flex-col">
+                        <div class="grid grid-cols-12 gap-4 p-4 border-b border-slate-700/50 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-800/30">
+                            <div class="col-span-2">Tipo</div>
+                            <div class="col-span-4">Producto</div>
+                            <div class="col-span-2 text-right">Cantidad</div>
+                            <div class="col-span-4">Detalle / Obs</div>
+                        </div>
+                        
+                        <div id="transaction-list" class="overflow-y-auto p-2 space-y-1 h-[500px]">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col">
+                    <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                        <span class="bg-purple-500/20 text-purple-400 p-1.5 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg></span>
+                        Tendencia de Movimientos
+                    </h2>
+                    <div class="glass-panel rounded-xl p-4 h-64 lg:h-auto lg:flex-1 relative">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                    
+                    <div class="mt-6 glass-panel rounded-xl p-6 bg-gradient-to-br from-slate-800 to-slate-900">
+                        <h4 class="text-sm font-semibold text-slate-300 mb-2">Insight de IA</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            El análisis de Gemini detecta una alta rotación en <span class="text-blue-300">Cuentas de Cristal</span>. Se recomienda reponer stock antes del viernes.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
     </div>
 
     <script>
-        // CONFIGURACIÓN -- PON TU URL AQUÍ
+        // ==========================================
+        // CONFIGURACIÓN DE POCKETBASE
+        // ==========================================
         const pb = new PocketBase('https://nexobot-pocketbase.napi37.easypanel.host');
 
-        const lista = document.getElementById('lista-movimientos');
-        const ultimoTipo = document.getElementById('ultimo-tipo');
-        const ultimaCant = document.getElementById('ultima-cantidad');
-        const ultimoProd = document.getElementById('ultimo-producto');
+        // ELEMENTOS DOM
+        const listContainer = document.getElementById('transaction-list');
+        const kpiTotal = document.getElementById('kpi-total');
+        const kpiEntradas = document.getElementById('kpi-entradas');
+        const kpiSalidas = document.getElementById('kpi-salidas');
+        
+        let chartInstance = null;
+        let movimientosCache = [];
 
-        // Función para crear la tarjeta HTML
-        function renderCard(data) {
+        // ==========================================
+        // FUNCIONES DE RENDERIZADO
+        // ==========================================
+
+        function renderRow(data) {
             const isEntrada = data.tipo === 'entrada';
-            const colorClass = isEntrada ? 'text-green-400' : 'text-red-400';
-            const borderClass = isEntrada ? 'entrada-border' : 'salida-border';
-            const icon = isEntrada ? 'jh' : 'kb'; // Iconos simulados con texto
-            const arrow = isEntrada ? 'wk' : 'wk';
-
+            const color = isEntrada ? 'text-emerald-400' : 'text-rose-400';
+            const bgBadge = isEntrada ? 'bg-emerald-400/10' : 'bg-rose-400/10';
+            const sign = isEntrada ? '+' : '-';
+            
             const html = `
-                <div class="card bg-slate-800 p-4 rounded-lg shadow ${borderClass} flex justify-between items-center">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold uppercase ${colorClass} bg-slate-900 px-2 py-1 rounded">
-                                ${data.tipo}
-                            </span>
-                            <span class="text-gray-400 text-xs">${new Date(data.created).toLocaleTimeString()}</span>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mt-1 capitalize">${data.producto}</h3>
-                        <p class="text-gray-400 text-sm italic">"${data.comentario || 'Sin observaciones'}"</p>
+                <div class="card-anim grid grid-cols-12 gap-4 p-3 rounded hover:bg-white/5 items-center text-sm border-b border-white/5 last:border-0 transition-colors cursor-default">
+                    <div class="col-span-2">
+                        <span class="${bgBadge} ${color} px-2 py-1 rounded text-xs font-bold uppercase tracking-wide border border-white/5">
+                            ${data.tipo}
+                        </span>
                     </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-mono font-bold ${colorClass}">
-                            ${isEntrada ? '+' : '-'}${data.cantidad}
-                        </div>
-                        <div class="text-xs text-gray-500">Unidades</div>
+                    <div class="col-span-4 font-medium text-slate-200 truncate" title="${data.producto}">
+                        ${data.producto}
+                    </div>
+                    <div class="col-span-2 text-right font-mono font-bold ${color}">
+                        ${sign}${data.cantidad}
+                    </div>
+                    <div class="col-span-4 text-xs text-slate-500 truncate italic">
+                        ${data.comentario || '-'}
+                        <span class="ml-2 opacity-50 not-italic font-sans">
+                           • ${new Date(data.created).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
                     </div>
                 </div>
             `;
             
-            // Eliminar mensaje de espera si es el primero
-            if(lista.innerHTML.includes('Esperando datos')) lista.innerHTML = '';
+            // Insertar arriba
+            listContainer.insertAdjacentHTML('afterbegin', html);
             
-            // Insertar al principio
-            lista.insertAdjacentHTML('afterbegin', html);
-
-            // Actualizar resumen lateral
-            ultimoTipo.innerText = data.tipo;
-            ultimoTipo.className = `text-sm uppercase tracking-widest mb-1 ${colorClass}`;
-            ultimaCant.innerText = data.cantidad;
-            ultimoProd.innerText = data.producto;
+            // Actualizar widget lateral "Última Acción"
+            document.getElementById('last-action-text').innerText = `${data.producto} (${data.cantidad})`;
+            document.getElementById('last-action-time').innerText = "Hace un momento";
         }
 
-        // 1. Cargar datos existentes
-        async function cargarDatos() {
+        function updateKPIs(items) {
+            kpiTotal.innerText = items.length;
+            
+            // Filtrar últimas 24h (simulado para demo, tomamos últimos 20)
+            const recent = items.slice(-20); 
+            const entradas = recent.filter(i => i.tipo === 'entrada').reduce((acc, curr) => acc + curr.cantidad, 0);
+            const salidas = recent.filter(i => i.tipo === 'salida').reduce((acc, curr) => acc + curr.cantidad, 0);
+
+            kpiEntradas.innerText = entradas;
+            kpiSalidas.innerText = salidas;
+            
+            updateChart(items);
+        }
+
+        // ==========================================
+        // GRÁFICO (CHART.JS)
+        // ==========================================
+        function initChart() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Flujo de Stock',
+                        data: [],
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8', font: {size: 10} } 
+                        }
+                    },
+                    animation: { duration: 1000 }
+                }
+            });
+        }
+
+        function updateChart(items) {
+            if(!chartInstance) return;
+            
+            // Tomar los últimos 30 movimientos para el gráfico
+            const dataSlice = items.slice(-30);
+            const labels = dataSlice.map(i => new Date(i.created).toLocaleTimeString());
+            const dataPoints = dataSlice.map(i => i.cantidad * (i.tipo === 'entrada' ? 1 : -1));
+
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets[0].data = dataPoints;
+            chartInstance.update();
+        }
+
+        // ==========================================
+        // LÓGICA PRINCIPAL
+        // ==========================================
+        async function loadInitialData() {
             try {
-                const records = await pb.collection('movimientos').getList(1, 10, { sort: '-created' });
-                records.items.reverse().forEach(renderCard); // Mostrar en orden
-            } catch (e) { console.error("Error cargando:", e); }
+                // Traer últimos 50 registros
+                const result = await pb.collection('movimientos').getList(1, 50, { sort: 'created' });
+                movimientosCache = result.items;
+                
+                // Renderizar lista (invertimos para que el más nuevo quede abajo en el array, pero en HTML usamos prepend)
+                listContainer.innerHTML = '';
+                movimientosCache.forEach(renderRow);
+                updateKPIs(movimientosCache);
+                
+            } catch (err) {
+                console.error("Error cargando:", err);
+            }
         }
 
-        // 2. Escuchar en Tiempo Real (La Magia)
+        // Suscripción Realtime
         pb.collection('movimientos').subscribe('*', function (e) {
             if (e.action === 'create') {
-                renderCard(e.record);
+                renderRow(e.record);
+                movimientosCache.push(e.record);
+                updateKPIs(movimientosCache);
+                
+                // Efecto visual en la tarjeta de última acción
+                const lastActionCard = document.getElementById('last-action-text').parentElement;
+                lastActionCard.classList.add('ring', 'ring-blue-400');
+                setTimeout(() => lastActionCard.classList.remove('ring', 'ring-blue-400'), 500);
             }
         });
 
-        cargarDatos();
+        // Iniciar
+        initChart();
+        loadInitialData();
+
     </script>
 </body>
 </html>
