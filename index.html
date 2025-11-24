@@ -3,278 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexo | Intelligent Inventory</title>
+    <title>Nexo | Realtime Stock</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pocketbase/0.21.1/pocketbase.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .card-anim { animation: slideUp 0.4s ease-out forwards; opacity: 0; transform: translateY(10px); }
-        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .stock-card { transition: all 0.2s; cursor: pointer; }
+        .stock-card:hover { transform: translateY(-2px); border-color: #3b82f6; }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Scrollbar fina */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0b0f19; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        /* Modal */
+        .modal-bg { background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <nav class="border-b border-slate-800 bg-slate-900/80 px-8 py-4 flex justify-between items-center z-50">
+    <header class="border-b border-slate-800 bg-slate-900 px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-3">
-            <div class="h-8 w-8 bg-gradient-to-tr from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center font-bold text-white">N</div>
-            <h1 class="text-xl font-bold tracking-tight">Nexo <span class="text-slate-500 font-normal">Enterprise</span></h1>
-        </div>
-        <div class="flex items-center gap-4 text-xs font-mono">
-            <div class="px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                SYSTEM ONLINE
+            <div class="bg-blue-600 p-2 rounded-lg text-white"><i class="ph-bold ph-cube text-xl"></i></div>
+            <div>
+                <h1 class="text-xl font-bold leading-none">Nexo</h1>
+                <p class="text-xs text-slate-400">Gestión de Inventario Mype</p>
             </div>
-            <div class="text-slate-400">v2.1.0</div>
         </div>
-    </nav>
+        <div class="flex gap-4">
+            <div class="text-right hidden sm:block">
+                <div class="text-xs text-slate-400 uppercase tracking-wider">Valorización Est.</div>
+                <div class="text-lg font-mono font-bold text-emerald-400">S/ <span id="valor-total">--</span></div>
+            </div>
+        </div>
+    </header>
 
-    <div class="flex-1 flex overflow-hidden">
-        
-        <aside class="w-16 border-r border-slate-800 hidden md:flex flex-col items-center py-6 gap-6 text-slate-500">
-            <div class="p-2 bg-slate-800 rounded text-blue-400 cursor-pointer hover:bg-slate-700 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></div>
-            <div class="p-2 cursor-pointer hover:text-slate-300 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></div>
-            <div class="mt-auto p-2 cursor-pointer hover:text-slate-300 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>
+    <div class="flex flex-1 overflow-hidden">
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col p-4 gap-2">
+            <button onclick="setView('inventory')" id="btn-inv" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium transition-colors">
+                <i class="ph-bold ph-squares-four"></i> Inventario Actual
+            </button>
+            <button onclick="setView('history')" id="btn-hist" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-medium transition-colors">
+                <i class="ph-bold ph-clock-counter-clockwise"></i> Historial (Bitácora)
+            </button>
+            
+            <div class="mt-auto bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <div class="text-xs text-slate-400 mb-2">ÚLTIMO AUDIO PROCESADO</div>
+                <div id="last-audio-msg" class="text-sm italic text-white line-clamp-2">"Esperando..."</div>
+                <div class="mt-2 flex items-center gap-2 text-xs text-blue-400">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    Listening
+                </div>
+            </div>
         </aside>
 
-        <main class="flex-1 p-8 overflow-y-auto">
+        <main class="flex-1 overflow-y-auto p-6 relative">
             
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="glass-panel rounded-xl p-5 relative overflow-hidden group">
-                    <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:scale-110 transition duration-500">
-                        <svg class="w-24 h-24 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/><path d="M7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/></svg>
-                    </div>
-                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Total Movimientos</p>
-                    <h3 class="text-3xl font-bold text-white mt-1" id="kpi-total">0</h3>
-                    <div class="mt-2 text-xs text-green-400 flex items-center gap-1">
-                        <span>↑ 12%</span> <span class="text-slate-500">vs semana pasada</span>
+            <div id="view-inventory" class="space-y-6">
+                <div class="flex justify-between items-end">
+                    <h2 class="text-2xl font-bold">Stock en Tiempo Real</h2>
+                    <div class="text-sm text-slate-400">
+                        Total Productos: <span id="total-skus" class="text-white font-bold">0</span>
                     </div>
                 </div>
 
-                <div class="glass-panel rounded-xl p-5">
-                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Entradas (24h)</p>
-                    <h3 class="text-3xl font-bold text-emerald-400 mt-1" id="kpi-entradas">0</h3>
+                <div class="relative">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-3 text-slate-500"></i>
+                    <input type="text" id="search-input" placeholder="Buscar producto..." 
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                           onkeyup="filterInventory()">
                 </div>
 
-                <div class="glass-panel rounded-xl p-5">
-                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Salidas (24h)</p>
-                    <h3 class="text-3xl font-bold text-rose-400 mt-1" id="kpi-salidas">0</h3>
-                </div>
-                
-                <div class="glass-panel rounded-xl p-5 border-l-4 border-l-blue-500">
-                    <p class="text-slate-400 text-xs uppercase mb-1">Última acción detectada</p>
-                    <div id="last-action-text" class="text-lg font-medium text-white truncate">Esperando audio...</div>
-                    <div id="last-action-time" class="text-xs text-slate-500 mt-1">--:--</div>
+                <div id="inventory-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    </div>
+            </div>
+
+            <div id="view-history" class="hidden space-y-4">
+                <h2 class="text-2xl font-bold mb-4">Bitácora de Movimientos</h2>
+                <div class="glass rounded-xl overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-slate-400 uppercase text-xs">
+                            <tr>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Producto</th>
+                                <th class="p-4 text-right">Cantidad</th>
+                                <th class="p-4">Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-700">
+                            </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
-                
-                <div class="lg:col-span-2 flex flex-col h-full">
-                    <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-                        <span class="bg-blue-500/20 text-blue-400 p-1.5 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
-                        Bitácora de Inventario
-                    </h2>
-                    
-                    <div class="glass-panel rounded-xl flex-1 overflow-hidden flex flex-col">
-                        <div class="grid grid-cols-12 gap-4 p-4 border-b border-slate-700/50 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-800/30">
-                            <div class="col-span-2">Tipo</div>
-                            <div class="col-span-4">Producto</div>
-                            <div class="col-span-2 text-right">Cantidad</div>
-                            <div class="col-span-4">Detalle / Obs</div>
-                        </div>
-                        
-                        <div id="transaction-list" class="overflow-y-auto p-2 space-y-1 h-[500px]">
-                            </div>
-                    </div>
-                </div>
-
-                <div class="flex flex-col">
-                    <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-                        <span class="bg-purple-500/20 text-purple-400 p-1.5 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg></span>
-                        Tendencia de Movimientos
-                    </h2>
-                    <div class="glass-panel rounded-xl p-4 h-64 lg:h-auto lg:flex-1 relative">
-                        <canvas id="activityChart"></canvas>
-                    </div>
-                    
-                    <div class="mt-6 glass-panel rounded-xl p-6 bg-gradient-to-br from-slate-800 to-slate-900">
-                        <h4 class="text-sm font-semibold text-slate-300 mb-2">Insight de IA</h4>
-                        <p class="text-xs text-slate-400 leading-relaxed">
-                            El análisis de Gemini detecta una alta rotación en <span class="text-blue-300">Cuentas de Cristal</span>. Se recomienda reponer stock antes del viernes.
-                        </p>
-                    </div>
-                </div>
-
-            </div>
         </main>
+    </div>
+
+    <div id="product-modal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-start">
+                <div>
+                    <h3 id="modal-title" class="text-2xl font-bold text-white">Nombre Producto</h3>
+                    <p class="text-slate-400 text-sm mt-1">Historial completo de este ítem</p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-500 hover:text-white"><i class="ph-bold ph-x text-xl"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto space-y-4" id="modal-content">
+                </div>
+        </div>
     </div>
 
     <script>
         // ==========================================
-        // CONFIGURACIÓN DE POCKETBASE
+        // CONFIGURACIÓN (Actualiza con tu URL)
         // ==========================================
         const pb = new PocketBase('https://nexobot-pocketbase.napi37.easypanel.host');
 
-        // ELEMENTOS DOM
-        const listContainer = document.getElementById('transaction-list');
-        const kpiTotal = document.getElementById('kpi-total');
-        const kpiEntradas = document.getElementById('kpi-entradas');
-        const kpiSalidas = document.getElementById('kpi-salidas');
-        
-        let chartInstance = null;
-        let movimientosCache = [];
+        // Estado Global
+        let allMovements = [];
+        let stockMap = {}; // Objeto clave: producto, valor: stock
 
         // ==========================================
-        // FUNCIONES DE RENDERIZADO
+        // LÓGICA DE NEGOCIO
         // ==========================================
 
-        function renderRow(data) {
-            const isEntrada = data.tipo === 'entrada';
-            const color = isEntrada ? 'text-emerald-400' : 'text-rose-400';
-            const bgBadge = isEntrada ? 'bg-emerald-400/10' : 'bg-rose-400/10';
-            const sign = isEntrada ? '+' : '-';
-            
-            const html = `
-                <div class="card-anim grid grid-cols-12 gap-4 p-3 rounded hover:bg-white/5 items-center text-sm border-b border-white/5 last:border-0 transition-colors cursor-default">
-                    <div class="col-span-2">
-                        <span class="${bgBadge} ${color} px-2 py-1 rounded text-xs font-bold uppercase tracking-wide border border-white/5">
-                            ${data.tipo}
-                        </span>
-                    </div>
-                    <div class="col-span-4 font-medium text-slate-200 truncate" title="${data.producto}">
-                        ${data.producto}
-                    </div>
-                    <div class="col-span-2 text-right font-mono font-bold ${color}">
-                        ${sign}${data.cantidad}
-                    </div>
-                    <div class="col-span-4 text-xs text-slate-500 truncate italic">
-                        ${data.comentario || '-'}
-                        <span class="ml-2 opacity-50 not-italic font-sans">
-                           • ${new Date(data.created).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </span>
-                    </div>
-                </div>
-            `;
-            
-            // Insertar arriba
-            listContainer.insertAdjacentHTML('afterbegin', html);
-            
-            // Actualizar widget lateral "Última Acción"
-            document.getElementById('last-action-text').innerText = `${data.producto} (${data.cantidad})`;
-            document.getElementById('last-action-time').innerText = "Hace un momento";
-        }
-
-        function updateKPIs(items) {
-            kpiTotal.innerText = items.length;
-            
-            // Filtrar últimas 24h (simulado para demo, tomamos últimos 20)
-            const recent = items.slice(-20); 
-            const entradas = recent.filter(i => i.tipo === 'entrada').reduce((acc, curr) => acc + curr.cantidad, 0);
-            const salidas = recent.filter(i => i.tipo === 'salida').reduce((acc, curr) => acc + curr.cantidad, 0);
-
-            kpiEntradas.innerText = entradas;
-            kpiSalidas.innerText = salidas;
-            
-            updateChart(items);
-        }
-
-        // ==========================================
-        // GRÁFICO (CHART.JS)
-        // ==========================================
-        function initChart() {
-            const ctx = document.getElementById('activityChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Flujo de Stock',
-                        data: [],
-                        borderColor: '#60a5fa',
-                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { 
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#94a3b8', font: {size: 10} } 
-                        }
-                    },
-                    animation: { duration: 1000 }
+        // 1. Calcular Stock (Agrupación)
+        function calculateStock() {
+            stockMap = {};
+            allMovements.forEach(m => {
+                if (!stockMap[m.producto]) {
+                    stockMap[m.producto] = { 
+                        total: 0, 
+                        history: [], 
+                        lastUpdate: m.created 
+                    };
                 }
+                
+                // Sumar o Restar
+                const qty = parseInt(m.cantidad);
+                if (m.tipo === 'entrada') {
+                    stockMap[m.producto].total += qty;
+                } else {
+                    stockMap[m.producto].total -= qty;
+                }
+                
+                stockMap[m.producto].history.push(m);
+                
+                // Guardar fecha más reciente
+                if (new Date(m.created) > new Date(stockMap[m.producto].lastUpdate)) {
+                    stockMap[m.producto].lastUpdate = m.created;
+                }
+            });
+            renderInventory();
+            renderHistoryTable();
+            updateStats();
+        }
+
+        // 2. Renderizar Grid de Inventario
+        function renderInventory(filterText = '') {
+            const grid = document.getElementById('inventory-grid');
+            grid.innerHTML = '';
+            
+            // Convertir mapa a array y ordenar alfabéticamente
+            const products = Object.keys(stockMap).sort();
+
+            products.forEach(prod => {
+                if (filterText && !prod.toLowerCase().includes(filterText.toLowerCase())) return;
+
+                const data = stockMap[prod];
+                const isLowStock = data.total <= 10;
+                const statusColor = isLowStock ? 'text-rose-400' : 'text-emerald-400';
+                const bgStatus = isLowStock ? 'bg-rose-500/10 border-rose-500/20' : 'bg-emerald-500/10 border-emerald-500/20';
+                
+                const card = `
+                    <div onclick="openProductDetail('${prod}')" class="stock-card glass p-5 rounded-xl border border-slate-700 relative overflow-hidden group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-2 rounded-lg bg-slate-800 text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <i class="ph-fill ph-package text-xl"></i>
+                            </div>
+                            <span class="text-xs font-mono text-slate-500">${new Date(data.lastUpdate).toLocaleDateString()}</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-100 mb-1 truncate" title="${prod}">${prod}</h3>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold ${statusColor}">${data.total}</span>
+                            <span class="text-xs text-slate-400">unidades</span>
+                        </div>
+                        ${isLowStock ? `<div class="mt-3 px-2 py-1 rounded text-xs font-bold inline-block bg-rose-500/20 text-rose-400">⚠️ STOCK BAJO</div>` : ''}
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', card);
             });
         }
 
-        function updateChart(items) {
-            if(!chartInstance) return;
+        // 3. Renderizar Tabla Historial
+        function renderHistoryTable() {
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = '';
             
-            // Tomar los últimos 30 movimientos para el gráfico
-            const dataSlice = items.slice(-30);
-            const labels = dataSlice.map(i => new Date(i.created).toLocaleTimeString());
-            const dataPoints = dataSlice.map(i => i.cantidad * (i.tipo === 'entrada' ? 1 : -1));
+            // Mostrar últimos 50 movimientos
+            const recent = [...allMovements].sort((a,b) => new Date(b.created) - new Date(a.created)).slice(0, 50);
 
-            chartInstance.data.labels = labels;
-            chartInstance.data.datasets[0].data = dataPoints;
-            chartInstance.update();
+            recent.forEach(m => {
+                const isEntrada = m.tipo === 'entrada';
+                const row = `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold uppercase ${isEntrada ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                                ${m.tipo}
+                            </span>
+                        </td>
+                        <td class="p-4 font-medium text-white">${m.producto}</td>
+                        <td class="p-4 text-right font-mono ${isEntrada ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${isEntrada ? '+' : '-'}${m.cantidad}
+                        </td>
+                        <td class="p-4 text-slate-400">${new Date(m.created).toLocaleString()}</td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
         }
 
-        // ==========================================
-        // LÓGICA PRINCIPAL
-        // ==========================================
-        async function loadInitialData() {
+        // 4. Cargar Datos
+        async function loadData() {
             try {
-                // Traer últimos 50 registros
-                const result = await pb.collection('movimientos').getList(1, 50, { sort: 'created' });
-                movimientosCache = result.items;
+                // Traer todo (o hasta 500 registros para la demo)
+                const records = await pb.collection('movimientos').getFullList({ sort: '-created' });
+                allMovements = records;
                 
-                // Renderizar lista (invertimos para que el más nuevo quede abajo en el array, pero en HTML usamos prepend)
-                listContainer.innerHTML = '';
-                movimientosCache.forEach(renderRow);
-                updateKPIs(movimientosCache);
+                if (allMovements.length > 0) {
+                    // Actualizar widget de último audio
+                    const last = allMovements[0];
+                    document.getElementById('last-audio-msg').innerText = `${last.tipo.toUpperCase()}: ${last.cantidad} ${last.producto}`;
+                }
                 
-            } catch (err) {
-                console.error("Error cargando:", err);
-            }
+                calculateStock();
+            } catch (e) { console.error(e); }
         }
 
+        // ==========================================
+        // INTERACTIVIDAD
+        // ==========================================
+        
         // Suscripción Realtime
         pb.collection('movimientos').subscribe('*', function (e) {
             if (e.action === 'create') {
-                renderRow(e.record);
-                movimientosCache.push(e.record);
-                updateKPIs(movimientosCache);
+                allMovements.push(e.record); // Añadir nuevo
+                // Mostrar notificación visual
+                document.getElementById('last-audio-msg').innerText = "Procesando nuevo audio...";
+                setTimeout(() => {
+                     document.getElementById('last-audio-msg').innerText = `${e.record.tipo.toUpperCase()}: ${e.record.cantidad} ${e.record.producto}`;
+                }, 1000);
                 
-                // Efecto visual en la tarjeta de última acción
-                const lastActionCard = document.getElementById('last-action-text').parentElement;
-                lastActionCard.classList.add('ring', 'ring-blue-400');
-                setTimeout(() => lastActionCard.classList.remove('ring', 'ring-blue-400'), 500);
+                calculateStock(); // Recalcular todo
             }
         });
 
-        // Iniciar
-        initChart();
-        loadInitialData();
+        // Modal Detalle
+        window.openProductDetail = (prodName) => {
+            const data = stockMap[prodName];
+            const modal = document.getElementById('product-modal');
+            const container = document.getElementById('modal-content');
+            
+            document.getElementById('modal-title').innerText = prodName;
+            container.innerHTML = '';
+
+            // Ordenar historial del producto (más reciente primero)
+            const sortedHistory = [...data.history].sort((a,b) => new Date(b.created) - new Date(a.created));
+
+            // Resumen arriba
+            container.insertAdjacentHTML('beforeend', `
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-slate-800 p-4 rounded-xl text-center">
+                        <div class="text-xs text-slate-400 uppercase">Stock Actual</div>
+                        <div class="text-3xl font-bold text-white">${data.total}</div>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-xl text-center">
+                        <div class="text-xs text-slate-400 uppercase">Movimientos</div>
+                        <div class="text-3xl font-bold text-blue-400">${data.history.length}</div>
+                    </div>
+                </div>
+                <h4 class="text-sm font-bold text-slate-400 mb-2 uppercase">Historial de Transacciones</h4>
+            `);
+
+            sortedHistory.forEach(m => {
+                const isEntrada = m.tipo === 'entrada';
+                const item = `
+                    <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold ${isEntrada ? 'text-emerald-400' : 'text-rose-400'} uppercase">
+                                    ${m.tipo}
+                                </span>
+                                <span class="text-xs text-slate-500">${new Date(m.created).toLocaleDateString()}</span>
+                            </div>
+                            <div class="text-sm text-slate-300 italic">"${m.comentario || 'Sin nota'}"</div>
+                        </div>
+                        <div class="font-mono font-bold text-lg ${isEntrada ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${isEntrada ? '+' : '-'}${m.cantidad}
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', item);
+            });
+
+            modal.classList.remove('hidden');
+        };
+
+        window.closeModal = () => {
+            document.getElementById('product-modal').classList.add('hidden');
+        };
+
+        window.filterInventory = () => {
+            const val = document.getElementById('search-input').value;
+            renderInventory(val);
+        };
+
+        window.setView = (viewName) => {
+            const invDiv = document.getElementById('view-inventory');
+            const histDiv = document.getElementById('view-history');
+            const btnInv = document.getElementById('btn-inv');
+            const btnHist = document.getElementById('btn-hist');
+
+            if(viewName === 'inventory') {
+                invDiv.classList.remove('hidden');
+                histDiv.classList.add('hidden');
+                btnInv.classList.replace('text-slate-400', 'text-white');
+                btnInv.classList.replace('hover:bg-slate-800', 'bg-blue-600');
+                btnInv.classList.remove('bg-transparent');
+                
+                btnHist.classList.replace('bg-blue-600', 'bg-transparent');
+                btnHist.classList.replace('text-white', 'text-slate-400');
+                btnHist.classList.add('hover:bg-slate-800');
+            } else {
+                invDiv.classList.add('hidden');
+                histDiv.classList.remove('hidden');
+                
+                btnHist.classList.replace('text-slate-400', 'text-white');
+                btnHist.classList.replace('hover:bg-slate-800', 'bg-blue-600');
+                btnHist.classList.remove('bg-transparent');
+
+                btnInv.classList.replace('bg-blue-600', 'bg-transparent');
+                btnInv.classList.replace('text-white', 'text-slate-400');
+                btnInv.classList.add('hover:bg-slate-800');
+            }
+        };
+
+        function updateStats() {
+            document.getElementById('total-skus').innerText = Object.keys(stockMap).length;
+            // Valorización simulada (promedio S/ 5 por item)
+            let totalItems = 0;
+            Object.values(stockMap).forEach(v => totalItems += v.total);
+            document.getElementById('valor-total').innerText = (totalItems * 5).toLocaleString();
+        }
+
+        // Init
+        loadData();
 
     </script>
 </body>
