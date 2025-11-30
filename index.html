@@ -3,404 +3,300 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexo | Intelligent Stock</title>
+    <title>Nexo | Intelligent Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pocketbase/0.21.1/pocketbase.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
         .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .stock-card { transition: all 0.2s; }
-        .stock-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border-color: #3b82f6; }
-        /* Animación de entrada */
-        .fade-in { animation: fadeIn 0.5s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .alert-pulse { animation: pulse-red 2s infinite; }
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+        .stock-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .stock-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); border-color: #60a5fa; }
+        
+        /* Alerta Roja Intensa */
+        .critical-stock { 
+            border: 1px solid rgba(244, 63, 94, 0.5); 
+            background: linear-gradient(145deg, rgba(244, 63, 94, 0.1) 0%, rgba(15, 23, 42, 0.6) 100%);
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+
+        /* Modal */
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white">
+<body class="h-screen flex flex-col overflow-hidden">
 
     <header class="border-b border-slate-800 bg-slate-900 px-6 py-3 flex justify-between items-center z-20">
         <div class="flex items-center gap-3">
-            <div class="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-blue-500/20">
+            <div class="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-500/30">
                 <i class="ph-bold ph-hexagon text-xl"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold leading-none tracking-tight">Nexo</h1>
-                <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Inventory OS</p>
+                <h1 class="text-xl font-bold leading-none tracking-tight">Nexo</h1>
+                <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Gestión de Inventario</p>
             </div>
         </div>
-        <div class="flex items-center gap-6">
-            <div class="text-right hidden sm:block">
-                <div class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Valorización</div>
+        <div class="flex items-center gap-4">
+            <div class="text-right hidden sm:block px-4 border-r border-slate-700">
+                <div class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Valor Total</div>
                 <div class="text-lg font-mono font-bold text-emerald-400">S/ <span id="valor-total">0.00</span></div>
             </div>
-            <div class="h-8 w-px bg-slate-800"></div>
-            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <span class="text-xs font-medium text-slate-300">En Vivo</span>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-green-400">EN VIVO</span>
             </div>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         
-        <aside class="w-64 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col p-4 gap-1">
-            <div class="mb-4 px-2">
-                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Menú Principal</p>
-                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 font-medium transition-all">
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col p-4">
+            <nav class="space-y-2 mb-6">
+                <button onclick="showView('dashboard')" id="btn-dash" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium shadow-lg shadow-blue-900/50 transition-all">
                     <i class="ph-bold ph-squares-four"></i> Dashboard
                 </button>
-                <button onclick="switchTab('history')" id="nav-history" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all">
-                    <i class="ph-bold ph-list-dashes"></i> Bitácora
-                </button>
-            </div>
+            </nav>
 
-            <div class="mt-auto glass p-4 rounded-xl relative overflow-hidden">
-                <div class="absolute top-0 right-0 p-2 opacity-10"><i class="ph-fill ph-robot text-4xl"></i></div>
-                <div class="text-[10px] font-bold text-blue-400 uppercase mb-1">Actividad Reciente</div>
-                <div id="last-movement-text" class="text-xs text-slate-300 font-medium leading-relaxed">
-                    Esperando datos...
+            <div class="mt-auto glass p-4 rounded-xl border-t border-blue-500/20">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] font-bold text-blue-400 uppercase">Última Actividad</span>
+                    <i class="ph-bold ph-whatsapp-logo text-green-400"></i>
                 </div>
-                <div class="mt-3 pt-3 border-t border-white/5 flex justify-between items-center text-[10px] text-slate-500">
-                    <span>Procesado por Gemini</span>
-                    <i class="ph-bold ph-lightning text-yellow-500"></i>
+                <div id="last-movement-text" class="text-xs text-slate-300 font-medium">
+                    Esperando audio...
                 </div>
             </div>
         </aside>
 
-        <main class="flex-1 overflow-y-auto bg-[#0b0f19] p-6 scroll-smooth">
+        <main class="flex-1 overflow-y-auto p-6 relative bg-[#0b0f19]">
             
-            <div id="tab-dashboard" class="space-y-6 max-w-7xl mx-auto fade-in">
+            <div id="view-dashboard" class="max-w-7xl mx-auto space-y-8">
                 
-                <div class="flex gap-4 mb-2">
+                <div class="flex flex-col md:flex-row gap-4">
                     <div class="relative flex-1">
-                        <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-3 text-slate-500"></i>
-                        <input type="text" id="search" placeholder="Buscar por SKU, nombre o categoría..." 
-                               class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-200 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all shadow-lg"
+                        <i class="ph-bold ph-magnifying-glass absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="text" id="search" placeholder="Buscar producto..." 
+                               class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none shadow-xl transition-all"
                                onkeyup="renderCards()">
                     </div>
-                    <div class="hidden sm:flex gap-2">
-                        <select id="filter-cat" onchange="renderCards()" class="bg-slate-900 border border-slate-700 rounded-xl px-4 text-sm text-slate-300 outline-none focus:border-blue-500">
-                            <option value="all">Todas las Categorías</option>
-                            </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="glass p-4 rounded-xl border-l-4 border-emerald-500">
-                        <p class="text-xs text-slate-400 uppercase">Productos Totales</p>
-                        <p class="text-2xl font-bold text-white mt-1" id="kpi-count">0</p>
-                    </div>
-                    <div class="glass p-4 rounded-xl border-l-4 border-rose-500">
-                        <p class="text-xs text-slate-400 uppercase">Alerta Stock Bajo</p>
-                        <p class="text-2xl font-bold text-white mt-1 flex items-center gap-2">
-                            <span id="kpi-low">0</span>
-                            <span class="text-xs font-normal text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full" id="kpi-low-badge" style="display:none">¡Atención!</span>
-                        </p>
-                    </div>
-                    <div class="glass p-4 rounded-xl col-span-2">
-                        <p class="text-xs text-slate-400 uppercase mb-2">Tendencia de Movimientos (30 días)</p>
-                        <div class="h-10 w-full">
-                            <canvas id="miniChart"></canvas>
+                    
+                    <div class="glass px-6 py-3 rounded-xl border border-rose-500/30 flex items-center gap-4">
+                        <div class="bg-rose-500/20 p-2 rounded-lg text-rose-400"><i class="ph-fill ph-warning-octagon text-xl"></i></div>
+                        <div>
+                            <p class="text-[10px] text-rose-300 uppercase font-bold">Stock Crítico (<5)</p>
+                            <p class="text-2xl font-bold text-white leading-none" id="kpi-critical">0</p>
                         </div>
                     </div>
                 </div>
 
-                <div id="grid-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+                <div id="grid-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pb-20">
                     </div>
-            </div>
-
-            <div id="tab-history" class="hidden max-w-5xl mx-auto fade-in">
-                <h2 class="text-2xl font-bold mb-6">Bitácora de Operaciones</h2>
-                <div class="glass rounded-xl overflow-hidden shadow-xl">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-slate-900/50 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
-                            <tr>
-                                <th class="p-4">Fecha/Hora</th>
-                                <th class="p-4">SKU</th>
-                                <th class="p-4">Producto</th>
-                                <th class="p-4">Movimiento</th>
-                                <th class="p-4">Detalle</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-rows" class="divide-y divide-slate-800">
-                            </tbody>
-                    </table>
-                </div>
             </div>
 
         </main>
     </div>
 
+    <div id="history-modal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] fade-in">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-start bg-slate-800/50">
+                <div>
+                    <h2 id="modal-title" class="text-2xl font-bold text-white">Producto</h2>
+                    <p class="text-sm text-slate-400 mt-1 font-mono" id="modal-sku">SKU-000</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 hover:bg-slate-700 rounded-lg transition-colors"><i class="ph-bold ph-x text-xl text-slate-400"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-950 text-slate-500 uppercase text-[10px] font-bold sticky top-0">
+                        <tr>
+                            <th class="p-4">Fecha</th>
+                            <th class="p-4">Tipo</th>
+                            <th class="p-4 text-right">Cant.</th>
+                            <th class="p-4">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-history-body" class="divide-y divide-slate-800 text-slate-300">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div class="p-4 border-t border-slate-800 bg-slate-900 text-center">
+                <span class="text-xs text-slate-500">Historial completo registrado en Blockchain (Simulado)</span>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- CONFIGURACIÓN ---
         const PB_URL = 'https://nexobot-pocketbase.napi37.easypanel.host';
         const pb = new PocketBase(PB_URL);
 
-        // --- ESTADO ---
-        let products = [];
+        let inventory = {}; // SKU -> Data
         let movements = [];
-        let inventory = {}; // SKU -> { total: 0, productData: {} }
-        let categories = new Set();
 
-        // --- INICIALIZACIÓN ---
         async function init() {
             try {
-                // 1. Cargar Productos (Catálogo)
-                const prodRecords = await pb.collection('productos').getFullList();
-                products = prodRecords;
-                
-                // Llenar filtro de categorías
-                products.forEach(p => categories.add(p.categoria));
-                const catSelect = document.getElementById('filter-cat');
-                categories.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c;
-                    opt.innerText = c;
-                    catSelect.appendChild(opt);
+                // 1. Cargar Catálogo
+                const prods = await pb.collection('productos').getFullList();
+                // 2. Cargar Movimientos (Ordenados por fecha)
+                const movs = await pb.collection('movimientos').getFullList({ sort: '-fecha' });
+                movements = movs;
+
+                // 3. Procesar
+                inventory = {};
+                prods.forEach(p => {
+                    inventory[p.sku] = { ...p, currentStock: 0, lastUpdate: null };
                 });
 
-                // 2. Cargar Movimientos
-                const movRecords = await pb.collection('movimientos').getFullList({ 
-                    sort: '-fecha', // Ordenar por fecha (el campo nuevo)
-                    expand: 'sku' // Intentar expandir si estuviera relacionado (opcional)
+                movs.forEach(m => {
+                    if(inventory[m.sku]) {
+                        // Suma/Resta
+                        const qty = parseInt(m.cantidad);
+                        inventory[m.sku].currentStock += (m.tipo === 'entrada' ? qty : -qty);
+                        
+                        // Guardar fecha reciente
+                        if(!inventory[m.sku].lastUpdate) inventory[m.sku].lastUpdate = m.fecha;
+                    }
                 });
-                movements = movRecords;
 
-                // 3. Procesar Datos
-                processData();
-
-                // 4. Renderizar
                 renderCards();
-                renderHistory();
-                initChart();
+                updateKPIs();
+                subscribe();
 
-                // 5. Activar Realtime
-                subscribeRealtime();
-
-            } catch (e) {
-                console.error("Error init:", e);
-            }
-        }
-
-        function processData() {
-            inventory = {};
-            let grandTotalValue = 0;
-            let lowStockCount = 0;
-
-            // Inicializar inventario con productos base (stock 0)
-            products.forEach(p => {
-                inventory[p.sku] = {
-                    ...p,
-                    currentStock: 0,
-                    lastMov: null
-                };
-            });
-
-            // Calcular movimientos
-            movements.forEach(m => {
-                if (inventory[m.sku]) {
-                    const qty = parseInt(m.cantidad);
-                    if (m.tipo === 'entrada') {
-                        inventory[m.sku].currentStock += qty;
-                    } else {
-                        inventory[m.sku].currentStock -= qty;
-                    }
-                    
-                    // Guardar fecha más reciente
-                    const mDate = new Date(m.fecha); // Usar campo fecha
-                    if (!inventory[m.sku].lastMov || mDate > new Date(inventory[m.sku].lastMov)) {
-                        inventory[m.sku].lastMov = m.fecha;
-                    }
-                }
-            });
-
-            // Calcular KPIs
-            Object.values(inventory).forEach(item => {
-                grandTotalValue += (item.currentStock * item.precio);
-                if (item.currentStock <= item.stock_minimo) lowStockCount++;
-            });
-
-            // Actualizar DOM KPIs
-            document.getElementById('valor-total').innerText = grandTotalValue.toLocaleString('es-PE', { minimumFractionDigits: 2 });
-            document.getElementById('kpi-count').innerText = products.length;
-            document.getElementById('kpi-low').innerText = lowStockCount;
-            if(lowStockCount > 0) document.getElementById('kpi-low-badge').style.display = 'inline-block';
+            } catch (e) { console.error(e); }
         }
 
         function renderCards() {
-            const container = document.getElementById('grid-container');
+            const grid = document.getElementById('grid-container');
             const search = document.getElementById('search').value.toLowerCase();
-            const catFilter = document.getElementById('filter-cat').value;
-            
-            container.innerHTML = '';
+            grid.innerHTML = '';
 
-            const items = Object.values(inventory).filter(item => {
-                const matchSearch = item.nombre.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search);
-                const matchCat = catFilter === 'all' || item.categoria === catFilter;
-                return matchSearch && matchCat;
-            });
+            Object.values(inventory).forEach(item => {
+                if(!item.nombre.toLowerCase().includes(search) && !item.sku.toLowerCase().includes(search)) return;
 
-            items.forEach(item => {
-                const isLow = item.currentStock <= item.stock_minimo;
-                const statusColor = isLow ? 'text-rose-400' : 'text-emerald-400';
-                const borderClass = isLow ? 'border-rose-500/50 shadow-rose-500/10' : 'border-slate-700';
-                const pulseClass = isLow ? 'alert-pulse' : '';
+                // Lógica de Alerta
+                const isCritical = item.currentStock <= 5; // MENOR A 5
+                const cardClass = isCritical ? 'critical-stock' : 'border-slate-700';
+                const stockColor = isCritical ? 'text-rose-500' : 'text-emerald-400';
+                const statusBadge = isCritical 
+                    ? `<span class="px-2 py-1 rounded bg-rose-500 text-white text-[10px] font-bold uppercase blink">Critico</span>` 
+                    : `<span class="px-2 py-1 rounded bg-slate-800 text-slate-400 text-[10px] uppercase">Normal</span>`;
 
-                const card = `
-                    <div class="glass rounded-xl p-5 border ${borderClass} ${pulseClass} stock-card relative overflow-hidden group">
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="text-[10px] font-bold bg-slate-800 px-2 py-1 rounded text-slate-400 uppercase tracking-wider">
+                const html = `
+                    <div onclick="openHistory('${item.sku}')" class="glass rounded-xl p-5 border ${cardClass} stock-card relative group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="text-[10px] font-bold font-mono text-slate-500 bg-slate-900 px-2 py-1 rounded">
                                 ${item.sku}
                             </div>
-                            <div class="text-xs text-slate-500 font-mono">
-                                ${item.categoria}
-                            </div>
+                            ${statusBadge}
                         </div>
                         
-                        <h3 class="font-bold text-slate-200 mb-4 truncate" title="${item.nombre}">${item.nombre}</h3>
+                        <h3 class="font-bold text-lg text-white mb-1 truncate" title="${item.nombre}">${item.nombre}</h3>
+                        <p class="text-xs text-slate-400 mb-4">${item.categoria}</p>
                         
-                        <div class="flex items-end justify-between">
+                        <div class="flex items-end justify-between border-t border-white/5 pt-4">
                             <div>
-                                <div class="text-[10px] text-slate-500 uppercase">Stock Actual</div>
-                                <div class="text-3xl font-bold font-mono ${statusColor}">${item.currentStock}</div>
+                                <p class="text-[10px] text-slate-500 uppercase mb-1">Stock Actual</p>
+                                <p class="text-3xl font-bold ${stockColor} font-mono">${item.currentStock}</p>
                             </div>
                             <div class="text-right">
-                                <div class="text-[10px] text-slate-500 uppercase">Unidad</div>
-                                <div class="text-sm font-medium text-slate-300">${item.unidad}</div>
+                                <p class="text-[10px] text-slate-500 uppercase mb-1">Unidad</p>
+                                <p class="text-sm font-medium text-slate-300">${item.unidad}</p>
                             </div>
                         </div>
-
-                        ${isLow ? `
-                            <div class="mt-3 flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 p-2 rounded-lg">
-                                <i class="ph-fill ph-warning"></i>
-                                <span>Stock Crítico (Mín: ${item.stock_minimo})</span>
-                            </div>
-                        ` : ''}
                     </div>
                 `;
-                container.insertAdjacentHTML('beforeend', card);
+                grid.insertAdjacentHTML('beforeend', html);
             });
         }
 
-        function renderHistory() {
-            const tbody = document.getElementById('history-rows');
-            tbody.innerHTML = '';
-            // Mostrar últimos 50
-            const recent = movements.slice(0, 50);
+        function openHistory(sku) {
+            const item = inventory[sku];
+            const itemMovs = movements.filter(m => m.sku === sku);
             
-            recent.forEach(m => {
-                const prod = inventory[m.sku] || { nombre: 'Desconocido' };
-                const isIn = m.tipo === 'entrada';
+            document.getElementById('modal-title').innerText = item.nombre;
+            document.getElementById('modal-sku').innerText = sku;
+            
+            const tbody = document.getElementById('modal-history-body');
+            tbody.innerHTML = '';
+
+            itemMovs.forEach(m => {
+                const isEntrada = m.tipo === 'entrada';
+                const color = isEntrada ? 'text-emerald-400' : 'text-rose-400';
+                const sign = isEntrada ? '+' : '-';
                 
                 const row = `
-                    <tr class="hover:bg-slate-800/50 transition-colors">
-                        <td class="p-4 text-slate-400 whitespace-nowrap font-mono text-xs">
-                            ${new Date(m.fecha).toLocaleString()}
+                    <tr class="hover:bg-slate-800 transition-colors">
+                        <td class="p-4 font-mono text-xs text-slate-400">
+                            ${new Date(m.fecha).toLocaleDateString()} <span class="text-slate-600">${new Date(m.fecha).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                         </td>
-                        <td class="p-4 font-mono text-xs text-blue-400">${m.sku}</td>
-                        <td class="p-4 text-slate-200 font-medium">${prod.nombre}</td>
                         <td class="p-4">
-                            <span class="px-2 py-1 rounded text-xs font-bold uppercase ${isIn ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
-                                ${isIn ? 'Entrada' : 'Salida'} ${m.cantidad}
+                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${isEntrada ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                                ${m.tipo}
                             </span>
                         </td>
-                        <td class="p-4 text-slate-500 italic text-xs truncate max-w-[200px]">${m.comentario || '-'}</td>
+                        <td class="p-4 text-right font-mono font-bold ${color} text-sm">
+                            ${sign}${m.cantidad}
+                        </td>
+                        <td class="p-4 text-xs text-slate-300 italic truncate max-w-[150px]">
+                            ${m.comentario}
+                        </td>
                     </tr>
                 `;
                 tbody.insertAdjacentHTML('beforeend', row);
             });
+
+            document.getElementById('history-modal').classList.remove('hidden');
         }
 
-        function subscribeRealtime() {
+        function closeModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        function updateKPIs() {
+            let totalVal = 0;
+            let critical = 0;
+            Object.values(inventory).forEach(i => {
+                totalVal += i.currentStock * i.precio;
+                if(i.currentStock <= 5) critical++;
+            });
+            document.getElementById('valor-total').innerText = totalVal.toLocaleString('es-PE', {minimumFractionDigits: 2});
+            document.getElementById('kpi-critical').innerText = critical;
+        }
+
+        function subscribe() {
             pb.collection('movimientos').subscribe('*', function(e) {
                 if(e.action === 'create') {
-                    // Agregar el nuevo movimiento al inicio
                     movements.unshift(e.record);
                     
-                    // Actualizar widget lateral
-                    const prodName = inventory[e.record.sku] ? inventory[e.record.sku].nombre : e.record.sku;
-                    const widget = document.getElementById('last-movement-text');
-                    widget.innerHTML = `
-                        <span class="${e.record.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'} font-bold">
-                            ${e.record.tipo.toUpperCase()}
-                        </span><br>
-                        ${e.record.cantidad} x ${prodName}<br>
-                        <span class="text-slate-500 text-[10px]">${e.record.comentario}</span>
-                    `;
-                    
-                    // Reprocesar todo
-                    processData();
-                    renderCards();
-                    renderHistory();
-                    
-                    // Efecto sonido suave (opcional)
-                    // new Audio('notification.mp3').play().catch(()=>{});
-                }
-            });
-        }
-
-        // Gráfico simple con Chart.js
-        function initChart() {
-            const ctx = document.getElementById('miniChart').getContext('2d');
-            
-            // Agrupar movimientos por día (últimos 15 días)
-            const days = {};
-            // Inicializar últimos 15 días en 0
-            for(let i=14; i>=0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                days[d.toLocaleDateString()] = 0;
-            }
-
-            movements.forEach(m => {
-                const dStr = new Date(m.fecha).toLocaleDateString();
-                if (days[dStr] !== undefined) {
-                    days[dStr]++;
-                }
-            });
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(days),
-                    datasets: [{
-                        data: Object.values(days),
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { display: false }
+                    // Actualizar memoria
+                    const sku = e.record.sku;
+                    if(inventory[sku]) {
+                        const qty = parseInt(e.record.cantidad);
+                        inventory[sku].currentStock += (e.record.tipo === 'entrada' ? qty : -qty);
+                        
+                        // Widget
+                        document.getElementById('last-movement-text').innerHTML = `
+                            <span class="${e.record.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'} font-bold">
+                                ${e.record.tipo.toUpperCase()}
+                            </span>: ${qty} ${inventory[sku].nombre}
+                        `;
                     }
+                    
+                    renderCards();
+                    updateKPIs();
                 }
             });
         }
 
-        function switchTab(tab) {
-            document.getElementById('tab-dashboard').classList.add('hidden');
-            document.getElementById('tab-history').classList.add('hidden');
-            
-            document.getElementById('nav-dashboard').classList.remove('bg-blue-600/10', 'text-blue-400', 'border', 'border-blue-600/20');
-            document.getElementById('nav-history').classList.remove('bg-blue-600/10', 'text-blue-400', 'border', 'border-blue-600/20');
-            
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
-            document.getElementById(`nav-${tab}`).classList.add('bg-blue-600/10', 'text-blue-400', 'border', 'border-blue-600/20');
-        }
+        // Cerrar modal con ESC
+        document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeModal(); });
 
-        // Run
         init();
     </script>
 </body>
